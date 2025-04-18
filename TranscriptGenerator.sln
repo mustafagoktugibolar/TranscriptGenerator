@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35931.197 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "transcriptgenerator.client", "transcriptgenerator.client\transcriptgenerator.client.esproj", "{FFF7EE42-07B8-EF0C-6623-0C62E1C7E106}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranscriptGenerator.Server", "TranscriptGenerator.Server\TranscriptGenerator.Server.csproj", "{9560BAA4-58C1-43D8-AE9B-845BD60113C6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FFF7EE42-07B8-EF0C-6623-0C62E1C7E106}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFF7EE42-07B8-EF0C-6623-0C62E1C7E106}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFF7EE42-07B8-EF0C-6623-0C62E1C7E106}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{FFF7EE42-07B8-EF0C-6623-0C62E1C7E106}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFF7EE42-07B8-EF0C-6623-0C62E1C7E106}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFF7EE42-07B8-EF0C-6623-0C62E1C7E106}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{9560BAA4-58C1-43D8-AE9B-845BD60113C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9560BAA4-58C1-43D8-AE9B-845BD60113C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9560BAA4-58C1-43D8-AE9B-845BD60113C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9560BAA4-58C1-43D8-AE9B-845BD60113C6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8C33BF47-7F44-47FB-B427-71669C547F23}
+	EndGlobalSection
+EndGlobal

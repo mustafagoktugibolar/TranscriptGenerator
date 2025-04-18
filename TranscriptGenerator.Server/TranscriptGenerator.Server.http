@@ -1,0 +1,16 @@
+@host = http://localhost:5234
+
+### send YouTube link
+POST {{host}}/api/transcribe/youtube
+Content-Type: application/json
+
+{
+  "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+}
+
+###
+
+### MP3-MP4
+POST {{host}}/api/transcribe/file
+Content-Type: multipart/form-data
+
