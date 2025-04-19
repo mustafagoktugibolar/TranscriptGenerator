@@ -19,7 +19,7 @@ namespace TranscriptGenerator.Server.Helpers
                 WhisperModels.Large => 6.0,
                 _ => 2.0
             };
-            int estimatedMinutes = (int)Math.Ceiling(sizeInMB * multiplier / 2);
+            int estimatedMinutes = Convert.ToInt32(Math.Ceiling(sizeInMB * multiplier / 2));
             return Math.Clamp(estimatedMinutes, 1, 120) * OneMinuteAsMs;
         }
 
