@@ -1,5 +1,6 @@
 using TranscriptGenerator.Server.Services.Interfaces;
 using TranscriptGenerator.Server.Services;
+using TranscriptGenerator.Server.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<ITranscriptService, TranscriptService>();
+LogHelper.Configure(builder.Logging.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>());
 
 var app = builder.Build();
 

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using TranscriptGenerator.Server.Helpers;
 
 namespace TranscriptGenerator.Server.Services
 {
@@ -7,6 +8,7 @@ namespace TranscriptGenerator.Server.Services
     {
         public static async Task<(string output, string error, int exitCode)> RunPythonAsync(string arguments, int timeoutMs = 60000)
         {
+            LogHelper.Info<ScriptRunner>("Starting script with arguments: {Args}, timeout: {Timeout} ms", arguments, timeoutMs);
             var psi = new ProcessStartInfo
             {
                 FileName = "py",
@@ -29,7 +31,7 @@ namespace TranscriptGenerator.Server.Services
                 if (!string.IsNullOrWhiteSpace(e.Data))
                 {
                     outputBuilder.AppendLine(e.Data);
-                    Console.WriteLine("STDOUT: " + e.Data);
+                    LogHelper.Info<ScriptRunner>("STDOUT: {Line}", e.Data);
                 }
             };
 
@@ -38,7 +40,7 @@ namespace TranscriptGenerator.Server.Services
                 if (!string.IsNullOrWhiteSpace(e.Data))
                 {
                     errorBuilder.AppendLine(e.Data);
-                    Console.Error.WriteLine("STDERR: " + e.Data);
+                    LogHelper.Warn<ScriptRunner>("STDERR: {Line}", e.Data);
                 }
             };
 
@@ -50,12 +52,14 @@ namespace TranscriptGenerator.Server.Services
             if (!exited)
             {
                 process.Kill();
+                LogHelper.Warn<ScriptRunner>("Script timed out after {Timeout} ms. Args: {Args}", timeoutMs, arguments);
                 return (string.Empty, "Timed out", -1);
             }
 
-            return (outputBuilder.ToString(), errorBuilder.ToString(), process.ExitCode);
-        }
+            int exitCode = process.ExitCode;
+            LogHelper.Info<ScriptRunner>("Script finished with exit code {ExitCode}", exitCode);
 
+            return (outputBuilder.ToString(), errorBuilder.ToString(), exitCode);
+        }
     }
 }
-
