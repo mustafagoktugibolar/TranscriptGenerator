@@ -1,4 +1,5 @@
-﻿using TranscriptGenerator.Server.Shared.Enums;
+﻿using TranscriptGenerator.Server.Models;
+using TranscriptGenerator.Server.Shared.Enums;
 
 namespace TranscriptGenerator.Server.Helpers
 {
@@ -40,6 +41,9 @@ namespace TranscriptGenerator.Server.Helpers
             return GetDefaultTimeoutMs(model) * 2;
         }
 
-
+        public static string GetModelArgument(ITranscribeRequest request)
+        {
+            return $"--model {request.Model.ToString().ToLower()}";
+        }
     }
 }

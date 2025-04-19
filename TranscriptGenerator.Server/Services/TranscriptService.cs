@@ -20,7 +20,7 @@ namespace TranscriptGenerator.Server.Services
 
             string ytScriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "youtube_to_mp3.py");
             string transcribeScriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "transcribe.py");
-            string modelArg = GetModelArgument(request);
+            string modelArg = CalculationHelper.GetModelArgument(request);
 
             string ytArgs = $"\"{ytScriptPath}\" --url \"{request.Url}\"";
             int timeOutms = CalculationHelper.GetTimeoutMsForMp3Download(request.Model);
@@ -95,7 +95,7 @@ namespace TranscriptGenerator.Server.Services
             LogHelper.Info<TranscriptService>("Saved uploaded file to: {Path}", tempPath);
 
             string scriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "transcribe.py");
-            string modelArg = GetModelArgument(request);
+            string modelArg = CalculationHelper.GetModelArgument(request);
             string args = $"\"{scriptPath}\" --path \"{tempPath}\" {modelArg}";
 
             int timeout = CalculationHelper.GetTimeoutMsFromSize(file.Length, request.Model);
@@ -112,11 +112,6 @@ namespace TranscriptGenerator.Server.Services
             }
 
             return code == 0 ? (true, output) : (false, error);
-        }
-
-        private string GetModelArgument(ITranscribeRequest request)
-        {
-            return $"--model {request.Model.ToString().ToLower()}";
         }
     }
 }
