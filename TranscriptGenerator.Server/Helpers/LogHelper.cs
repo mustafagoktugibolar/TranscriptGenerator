@@ -2,7 +2,7 @@
 {
     public static class LogHelper
     {
-        private static ILoggerFactory _loggerFactory;
+        private static ILoggerFactory? _loggerFactory;
 
         public static void Configure(ILoggerFactory loggerFactory)
         {

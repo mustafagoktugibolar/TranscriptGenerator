@@ -1,6 +1,5 @@
 ﻿using TranscriptGenerator.Server.Models;
 using TranscriptGenerator.Server.Services.Interfaces;
-using TranscriptGenerator.Server.Shared.Enums;
 using TranscriptGenerator.Server.Helpers;
 
 namespace TranscriptGenerator.Server.Services
@@ -9,8 +8,6 @@ namespace TranscriptGenerator.Server.Services
     {
         private readonly IWebHostEnvironment _env;
         private readonly string[] _allowedExtensions = new[] { ".mp3", ".mp4", ".wav" };
-        private const int OneMinuteAsMs = 60000;
-        private const int OneMegabyteInBytes = 1048576;
 
         public TranscriptService(IWebHostEnvironment env)
         {
@@ -26,7 +23,7 @@ namespace TranscriptGenerator.Server.Services
             string modelArg = GetModelArgument(request);
 
             string ytArgs = $"\"{ytScriptPath}\" --url \"{request.Url}\"";
-            int timeOutms = 2 * OneMinuteAsMs;
+            int timeOutms = CalculationHelper.GetTimeoutMsForMp3Download(request.Model);
             var (mp3Path, ytError, ytExitCode) = await ScriptRunner.RunPythonAsync(ytArgs, timeOutms);
 
             if (ytExitCode != 0 || string.IsNullOrWhiteSpace(mp3Path))
@@ -39,9 +36,9 @@ namespace TranscriptGenerator.Server.Services
             LogHelper.Info<TranscriptService>("YouTube audio downloaded successfully: {Path}", mp3Path);
 
             string transcribeArgs = $"\"{transcribeScriptPath}\" --path \"{mp3Path}\" {modelArg}";
-            int timeout = GetDefaultTimeoutMilliseconds(request.Model);
+            int timeout = CalculationHelper.GetDefaultTimeoutMs(request.Model);
 
-            string output = string.Empty;
+            string? output = string.Empty;
             string transcribeError = string.Empty;
             int code = -1;
 
@@ -73,9 +70,7 @@ namespace TranscriptGenerator.Server.Services
                 }
             }
 
-            return code == 0
-                ? (true, output)
-                : (false, transcribeError ?? "Unknown error during transcription");
+            return code == 0 ? (true, output ?? "") : (false, transcribeError ?? "Unknown error during transcription");
         }
 
         public async Task<(bool Success, string Result)> TranscribeFileAsync(TranscribeFileRequest request)
@@ -103,7 +98,7 @@ namespace TranscriptGenerator.Server.Services
             string modelArg = GetModelArgument(request);
             string args = $"\"{scriptPath}\" --path \"{tempPath}\" {modelArg}";
 
-            int timeout = GetTimeoutMilliseconds(file.Length, request.Model);
+            int timeout = CalculationHelper.GetTimeoutMsFromSize(file.Length, request.Model);
             var (output, error, code) = await ScriptRunner.RunPythonAsync(args, timeout);
 
             try
@@ -122,35 +117,6 @@ namespace TranscriptGenerator.Server.Services
         private string GetModelArgument(ITranscribeRequest request)
         {
             return $"--model {request.Model.ToString().ToLower()}";
-        }
-
-        private int GetTimeoutMilliseconds(long fileSizeBytes, WhisperModels model)
-        {
-            long sizeInMB = fileSizeBytes / OneMegabyteInBytes;
-            double multiplier = model switch
-            {
-                WhisperModels.Tiny => 1.0,
-                WhisperModels.Base => 2.0,
-                WhisperModels.Small => 3.0,
-                WhisperModels.Medium => 4.0,
-                WhisperModels.Large => 6.0,
-                _ => 2.0
-            };
-            int estimatedMinutes = (int)Math.Ceiling(sizeInMB * multiplier / 2);
-            return Math.Clamp(estimatedMinutes, 1, 120) * OneMinuteAsMs;
-        }
-
-        private int GetDefaultTimeoutMilliseconds(WhisperModels model)
-        {
-            return model switch
-            {
-                WhisperModels.Tiny => 3 * OneMinuteAsMs,
-                WhisperModels.Base => 6 * OneMinuteAsMs,
-                WhisperModels.Small => 10 * OneMinuteAsMs,
-                WhisperModels.Medium => 15 * OneMinuteAsMs,
-                WhisperModels.Large => 25 * OneMinuteAsMs,
-                _ => 6 * OneMinuteAsMs
-            };
         }
     }
 }

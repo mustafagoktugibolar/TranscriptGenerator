@@ -20,10 +20,11 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.Limits.MaxRequestBodySize = 100_000_000; 
 });
-LogHelper.Configure(builder.Logging.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>());
 
 var app = builder.Build();
 
+var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+LogHelper.Configure(loggerFactory);
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
