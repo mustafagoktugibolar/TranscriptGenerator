@@ -16,20 +16,65 @@ namespace TranscriptGenerator.Server.Services
 
         public async Task<(bool Success, string Result)> TranscribeYoutubeAsync(YoutubeTranscribeRequest request)
         {
-            string scriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "transcribe.py");
+            string ytScriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "youtube_to_mp3.py");
+            string transcribeScriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "transcribe.py");
             string modelArg = GetModelArgument(request);
-            string args = $"\"{scriptPath}\" --source youtube --url \"{request.Url}\" {modelArg}";
 
+            string ytArgs = $"\"{ytScriptPath}\" --url \"{request.Url}\"";
+            var (mp3Path, ytError, ytExitCode) = await ScriptRunner.RunPythonAsync(ytArgs, 2 * 60 * 1000);
+
+            if (ytExitCode != 0 || string.IsNullOrWhiteSpace(mp3Path))
+            {
+                return (false, $"YouTube download failed: {ytError}");
+            }
+
+            mp3Path = mp3Path.Trim();
+
+            string transcribeArgs = $"\"{transcribeScriptPath}\" --path \"{mp3Path}\" {modelArg}";
             int timeout = GetDefaultTimeoutMilliseconds(request.Model);
-            var (output, error, code) = await ScriptRunner.RunPythonAsync(args, timeout);
 
-            return code == 0 ? (true, output) : (false, error);
+            string output = string.Empty;
+            string transcribeError = string.Empty;
+            int code = -1;
+
+            try
+            {
+                var result = await ScriptRunner.RunPythonAsync(transcribeArgs, timeout);
+                output = result.output?.Trim();
+                transcribeError = result.error;
+                code = result.exitCode;
+            }
+            catch (Exception ex)
+            {
+                transcribeError = "Transcription process crashed: " + ex.Message;
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(mp3Path))
+                    {
+                        File.Delete(mp3Path);
+                        Console.WriteLine($"Deleted temp file: {mp3Path}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Failed to delete temp mp3 file: " + ex.Message);
+                }
+            }
+
+            return code == 0
+                ? (true, output)
+                : (false, transcribeError ?? "Unknown error during transcription");
         }
+
 
         public async Task<(bool Success, string Result)> TranscribeFileAsync(TranscribeFileRequest request)
         {
             var file = request.File;
             string ext = Path.GetExtension(file.FileName).ToLower();
+
             if (!_allowedExtensions.Contains(ext))
                 return (false, "Invalid file type.");
 
@@ -41,12 +86,12 @@ namespace TranscriptGenerator.Server.Services
 
             string scriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "transcribe.py");
             string modelArg = GetModelArgument(request);
-            string args = $"\"{scriptPath}\" --source file --path \"{tempPath}\" {modelArg}";
+            string args = $"\"{scriptPath}\" --path \"{tempPath}\" {modelArg}";
 
             int timeout = GetTimeoutMilliseconds(file.Length, request.Model);
             var (output, error, code) = await ScriptRunner.RunPythonAsync(args, timeout);
 
-            File.Delete(tempPath);
+            try { File.Delete(tempPath); } catch { }
 
             return code == 0 ? (true, output) : (false, error);
         }

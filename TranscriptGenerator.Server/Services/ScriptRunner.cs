@@ -1,36 +1,61 @@
 ﻿using System.Diagnostics;
+using System.Text;
 
 namespace TranscriptGenerator.Server.Services
 {
     public class ScriptRunner
     {
-        public static async Task<(string output, string error, int exitCode)> RunPythonAsync(string arguments, int timeoutMilliseconds)
+        public static async Task<(string output, string error, int exitCode)> RunPythonAsync(string arguments, int timeoutMs = 60000)
         {
             var psi = new ProcessStartInfo
             {
-                FileName = "python3",
+                FileName = "py",
                 Arguments = arguments,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8
             };
 
-            using var process = new Process { StartInfo = psi };
+            var process = new Process { StartInfo = psi };
+
+            var outputBuilder = new StringBuilder();
+            var errorBuilder = new StringBuilder();
+
+            process.OutputDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                {
+                    outputBuilder.AppendLine(e.Data);
+                    Console.WriteLine("STDOUT: " + e.Data);
+                }
+            };
+
+            process.ErrorDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                {
+                    errorBuilder.AppendLine(e.Data);
+                    Console.Error.WriteLine("STDERR: " + e.Data);
+                }
+            };
+
             process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
 
-            bool exited = process.WaitForExit(timeoutMilliseconds);
-            string output = await process.StandardOutput.ReadToEndAsync();
-            string error = await process.StandardError.ReadToEndAsync();
-
+            var exited = await Task.Run(() => process.WaitForExit(timeoutMs));
             if (!exited)
             {
                 process.Kill();
-                return (string.Empty, "Transcription timed out and was terminated.", -1);
+                return (string.Empty, "Timed out", -1);
             }
 
-            return (output, error, process.ExitCode);
+            return (outputBuilder.ToString(), errorBuilder.ToString(), process.ExitCode);
         }
+
     }
 }
 
