@@ -1,6 +1,7 @@
 using TranscriptGenerator.Server.Services.Interfaces;
 using TranscriptGenerator.Server.Services;
 using TranscriptGenerator.Server.Helpers;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,14 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<ITranscriptService, TranscriptService>();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 100_000_000;
+});
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 100_000_000; 
+});
 LogHelper.Configure(builder.Logging.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>());
 
 var app = builder.Build();

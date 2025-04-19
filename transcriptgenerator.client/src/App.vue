@@ -12,12 +12,33 @@
 
     <div class="mb-4" v-if="inputType === 'youtube'">
       <label class="block mb-2 font-medium">YouTube Linki</label>
-      <input v-model="youtubeLink" type="text" placeholder="https://youtube.com/..." class="w-full border rounded p-2" />
+      <input
+        v-model="youtubeLink"
+        type="text"
+        placeholder="https://youtube.com/..."
+        class="w-full border rounded p-2"
+      />
     </div>
 
     <div class="mb-4" v-else>
       <label class="block mb-2 font-medium">Ses / Video Dosyası</label>
-      <input type="file" @change="handleFileUpload" accept=".mp3,.mp4" class="w-full border rounded p-2" />
+      <input
+        type="file"
+        @change="handleFileUpload"
+        accept=".mp3,.mp4"
+        class="w-full border rounded p-2"
+      />
+    </div>
+
+    <div class="mb-4">
+      <label class="block mb-2 font-medium">Whisper Model Seçimi</label>
+      <select v-model="selectedModel" class="w-full border rounded p-2">
+        <option :value="0">Tiny</option>
+        <option :value="1">Base</option>
+        <option :value="2">Small</option>
+        <option :value="3">Medium</option>
+        <option :value="4">Large</option>
+      </select>
     </div>
 
     <button @click="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
@@ -32,26 +53,52 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref } from "vue";
+import axios from "axios";
 
-const inputType = ref('youtube')
-const youtubeLink = ref('')
-const selectedFile = ref(null)
-const transcript = ref('')
+const inputType = ref("youtube");
+const youtubeLink = ref("");
+const selectedFile = ref(null);
+const transcript = ref("");
+const selectedModel = ref(0);
 
 const handleFileUpload = (event) => {
-  selectedFile.value = event.target.files[0]
-}
+  selectedFile.value = event.target.files[0];
+};
 
 const submit = async () => {
-  if (inputType.value === 'youtube') {
-    // YouTube linki ile API çağrısı yapılacak
-    // Örnek: axios.post('/api/transcribe/youtube', { url: youtubeLink.value })
-  } else {
-    // Dosya ile API çağrısı yapılacak
-    // Örnek: FormData kullanarak dosya gönderimi
-  }
+  transcript.value = "İşleniyor...";
 
-  // API'den gelen transcript verisi transcript.value'ya atanacak
-}
+  if (inputType.value === "youtube") {
+    try {
+      const response = await axios.post("/api/transcribe/youtube", {
+        url: youtubeLink.value,
+        model: selectedModel.value,
+      });
+      transcript.value = response.data.transcript;
+    } catch (error) {
+      console.error("YouTube transcription error:", error);
+      transcript.value = "Bir hata oluştu (YouTube).";
+    }
+  } else {
+    if (!selectedFile.value) {
+      transcript.value = "Lütfen bir dosya seçin.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile.value);
+    formData.append("model", selectedModel.value);
+
+    try {
+      const response = await axios.post("/api/transcribe/file", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      transcript.value = response.data.transcript;
+    } catch (error) {
+      console.error("File transcription error:", error);
+      transcript.value = "Bir hata oluştu (dosya).";
+    }
+  }
+};
 </script>

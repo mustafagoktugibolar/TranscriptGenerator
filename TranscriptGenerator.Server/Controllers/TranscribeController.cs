@@ -30,7 +30,7 @@ namespace TranscriptGenerator.Server.Controllers
             var (success, result) = await _transcriptService.TranscribeYoutubeAsync(request);
             return success ? Ok(new { transcript = result }) : StatusCode(500, result);
         }
-
+        [RequestSizeLimit(100_000_000)]
         [HttpPost("file")]
         public async Task<IActionResult> TranscribeFile([FromForm] TranscribeFileRequest request)
         {
