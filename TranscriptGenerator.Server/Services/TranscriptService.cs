@@ -21,7 +21,8 @@ namespace TranscriptGenerator.Server.Services
             string modelArg = GetModelArgument(request);
 
             string ytArgs = $"\"{ytScriptPath}\" --url \"{request.Url}\"";
-            var (mp3Path, ytError, ytExitCode) = await ScriptRunner.RunPythonAsync(ytArgs, 2 * 60 * 1000);
+            int timeOutms = 2 * 60 * 1000; // if it takes more than 2 minutes kill
+            var (mp3Path, ytError, ytExitCode) = await ScriptRunner.RunPythonAsync(ytArgs, timeOutms);
 
             if (ytExitCode != 0 || string.IsNullOrWhiteSpace(mp3Path))
             {
@@ -114,7 +115,7 @@ namespace TranscriptGenerator.Server.Services
                 _ => 2.0
             };
             int estimatedMinutes = (int)Math.Ceiling(sizeInMB * multiplier / 2);
-            return Math.Clamp(estimatedMinutes, 1, 30) * 60 * 1000;
+            return Math.Clamp(estimatedMinutes, 1, 120) * 60 * 1000;
         }
 
         private int GetDefaultTimeoutMilliseconds(WhisperModels model)
