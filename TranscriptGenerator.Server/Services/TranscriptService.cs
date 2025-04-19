@@ -8,6 +8,8 @@ namespace TranscriptGenerator.Server.Services
     {
         private readonly IWebHostEnvironment _env;
         private readonly string[] _allowedExtensions = new[] { ".mp3", ".mp4", ".wav" };
+        private const int OneMinuteAsMs = 60000;
+        private const int OneMegabyteInBytes  = 1048576;
 
         public TranscriptService(IWebHostEnvironment env)
         {
@@ -21,7 +23,7 @@ namespace TranscriptGenerator.Server.Services
             string modelArg = GetModelArgument(request);
 
             string ytArgs = $"\"{ytScriptPath}\" --url \"{request.Url}\"";
-            int timeOutms = 2 * 60 * 1000; // if it takes more than 2 minutes kill
+            int timeOutms = 2 * OneMinuteAsMs; // if it takes more than 2 minutes kill
             var (mp3Path, ytError, ytExitCode) = await ScriptRunner.RunPythonAsync(ytArgs, timeOutms);
 
             if (ytExitCode != 0 || string.IsNullOrWhiteSpace(mp3Path))
@@ -104,7 +106,7 @@ namespace TranscriptGenerator.Server.Services
 
         private int GetTimeoutMilliseconds(long fileSizeBytes, WhisperModels model)
         {
-            long sizeInMB = fileSizeBytes / (1024 * 1024);
+            long sizeInMB = fileSizeBytes / OneMegabyteInBytes ;
             double multiplier = model switch
             {
                 WhisperModels.Tiny => 1.0,
@@ -115,19 +117,19 @@ namespace TranscriptGenerator.Server.Services
                 _ => 2.0
             };
             int estimatedMinutes = (int)Math.Ceiling(sizeInMB * multiplier / 2);
-            return Math.Clamp(estimatedMinutes, 1, 120) * 60 * 1000;
+            return Math.Clamp(estimatedMinutes, 1, 120) * OneMinuteAsMs;
         }
 
         private int GetDefaultTimeoutMilliseconds(WhisperModels model)
         {
             return model switch
             {
-                WhisperModels.Tiny => 3 * 60 * 1000,
-                WhisperModels.Base => 6 * 60 * 1000,
-                WhisperModels.Small => 10 * 60 * 1000,
-                WhisperModels.Medium => 15 * 60 * 1000,
-                WhisperModels.Large => 25 * 60 * 1000,
-                _ => 6 * 60 * 1000
+                WhisperModels.Tiny => 3 * OneMinuteAsMs,
+                WhisperModels.Base => 6 * OneMinuteAsMs,
+                WhisperModels.Small => 10 * OneMinuteAsMs,
+                WhisperModels.Medium => 15 * OneMinuteAsMs,
+                WhisperModels.Large => 25 * OneMinuteAsMs,
+                _ => 6 * OneMinuteAsMs
             };
         }
     }
