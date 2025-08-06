@@ -1,16 +1,17 @@
 ﻿import argparse
 import whisper
-import os
 import sys
 import io
 import torch
 import time
+import os
+os.environ["PATH"] += os.pathsep + "/opt/homebrew/bin"
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--path', required=True, help="Path to the audio file")
-parser.add_argument('--model', default='base', help="Whisper model to use: tiny, base, small, medium, large")
+parser.add_argument('--model', default='base', help="Whisper model to use: tiny, base, small, medium, large, turbo")
 args = parser.parse_args()
 
 if not os.path.exists(args.path):

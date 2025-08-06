@@ -38,6 +38,7 @@
         <option :value="2">Small</option>
         <option :value="3">Medium</option>
         <option :value="4">Large</option>
+        <option :value="5">Turbo</option>
       </select>
     </div>
 

@@ -6,6 +6,7 @@
         Base,
         Small,
         Medium,
-        Large
+        Large,
+        Turbo
     }
 }

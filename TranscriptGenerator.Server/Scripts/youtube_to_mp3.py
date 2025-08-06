@@ -14,23 +14,22 @@ args = parser.parse_args()
 # Generate a temp filename
 filename = f"temp_{uuid.uuid4().hex}.%(ext)s"
 
+yt_dlp_path = "/opt/homebrew/bin/yt-dlp"
 # Build yt-dlp command
 command = [
-    "yt-dlp",
+    yt_dlp_path,  
     "--quiet",
     "--no-warnings",
     "-f", "bestaudio",
     "-x",
+    "--ffmpeg-location", "/opt/homebrew/bin",
     "--audio-format", "mp3",
     "-o", filename,
     args.url
 ]
 
-
-
 # Run download
 result = subprocess.run(command, capture_output=True)
-
 
 # Error handling
 if result.returncode != 0:
