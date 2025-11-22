@@ -11,7 +11,14 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<ITranscriptService, TranscriptService>();
+
+builder.Services.AddHttpClient<ITranscriptService, TranscriptService>((sp, client) =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var pythonServiceUrl = config["PythonServiceUrl"] ?? "http://localhost:8000";
+    client.BaseAddress = new Uri(pythonServiceUrl);
+    client.Timeout = TimeSpan.FromMinutes(30); // Long timeout for CPU-based transcription
+});
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 100_000_000;
@@ -25,9 +32,6 @@ var app = builder.Build();
 
 var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 LogHelper.Configure(loggerFactory);
-app.UseDefaultFiles();
-app.UseStaticFiles();
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -40,7 +44,5 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.MapFallbackToFile("/index.html");
 
 app.Run();

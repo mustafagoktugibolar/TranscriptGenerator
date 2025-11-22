@@ -1,0 +1,15 @@
+name: transcript-generator
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - fastapi
+  - uvicorn
+  - yt-dlp
+  - ffmpeg
+  - pip
+  - pip:
+    - torch  # Auto-detects and uses GPU if available
+    - openai-whisper
+    - python-multipart

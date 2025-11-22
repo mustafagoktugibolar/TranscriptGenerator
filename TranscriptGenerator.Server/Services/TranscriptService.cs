@@ -1,117 +1,90 @@
-﻿using TranscriptGenerator.Server.Models;
+﻿using System.Net.Http.Json;
+using TranscriptGenerator.Server.Models;
 using TranscriptGenerator.Server.Services.Interfaces;
 using TranscriptGenerator.Server.Helpers;
+using System.Text.Json;
 
 namespace TranscriptGenerator.Server.Services
 {
     public class TranscriptService : ITranscriptService
     {
-        private readonly IWebHostEnvironment _env;
+        private readonly HttpClient _httpClient;
         private readonly string[] _allowedExtensions = new[] { ".mp3", ".mp4", ".wav" };
 
-        public TranscriptService(IWebHostEnvironment env)
+        public TranscriptService(HttpClient httpClient)
         {
-            _env = env;
+            _httpClient = httpClient;
         }
 
         public async Task<(bool Success, string Result)> TranscribeYoutubeAsync(YoutubeTranscribeRequest request)
         {
-            LogHelper.Info<TranscriptService>("Starting YouTube transcription for URL: {Url} with model: {Model}", request.Url, request.Model);
-
-            string ytScriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "youtube_to_mp3.py");
-            string transcribeScriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "transcribe.py");
-            string modelArg = CalculationHelper.GetModelArgument(request);
-
-            string ytArgs = $"\"{ytScriptPath}\" --url \"{request.Url}\"";
-            int timeOutms = CalculationHelper.GetTimeoutMsForMp3Download(request.Model);
-            var (mp3Path, ytError, ytExitCode) = await ScriptRunner.RunPythonAsync(ytArgs, timeOutms);
-
-            if (ytExitCode != 0 || string.IsNullOrWhiteSpace(mp3Path))
-            {
-                LogHelper.Warn<TranscriptService>("YouTube download failed with exit code {ExitCode}: {Error}", ytExitCode, ytError);
-                return (false, $"YouTube download failed: {ytError}");
-            }
-
-            mp3Path = mp3Path.Trim();
-            LogHelper.Info<TranscriptService>("YouTube audio downloaded successfully: {Path}", mp3Path);
-
-            string transcribeArgs = $"\"{transcribeScriptPath}\" --path \"{mp3Path}\" {modelArg}";
-            int timeout = CalculationHelper.GetDefaultTimeoutMs(request.Model);
-
-            string? output = string.Empty;
-            string transcribeError = string.Empty;
-            int code = -1;
+            LogHelper.Info<TranscriptService>("Sending YouTube transcription request for URL: {Url}", request.Url);
 
             try
             {
-                var result = await ScriptRunner.RunPythonAsync(transcribeArgs, timeout);
-                output = result.output?.Trim();
-                transcribeError = result.error;
-                code = result.exitCode;
+                var response = await _httpClient.PostAsJsonAsync("/transcribe_youtube", new { url = request.Url, model = request.Model.ToString().ToLower() });
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                    if (result.TryGetProperty("text", out var text))
+                    {
+                        return (true, text.GetString() ?? "");
+                    }
+                }
+                
+                var error = await response.Content.ReadAsStringAsync();
+                LogHelper.Error<TranscriptService>(null, "Python service error: {Error}", error);
+                return (false, $"Service error: {response.StatusCode}");
             }
             catch (Exception ex)
             {
-                transcribeError = "Transcription process crashed: " + ex.Message;
-                LogHelper.Error<TranscriptService>(ex, "Exception during transcription process.");
+                LogHelper.Error<TranscriptService>(ex, "Failed to communicate with Python service.");
+                return (false, "Internal server error communicating with transcription service.");
             }
-            finally
-            {
-                try
-                {
-                    if (File.Exists(mp3Path))
-                    {
-                        File.Delete(mp3Path);
-                        LogHelper.Info<TranscriptService>("Deleted temp file: {File}", mp3Path);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogHelper.Error<TranscriptService>(ex, "Failed to delete temp mp3 file: {File}", mp3Path);
-                }
-            }
-
-            return code == 0 ? (true, output ?? "") : (false, transcribeError ?? "Unknown error during transcription");
         }
 
         public async Task<(bool Success, string Result)> TranscribeFileAsync(TranscribeFileRequest request)
         {
-            LogHelper.Info<TranscriptService>("Starting file transcription for file: {FileName}, size: {Size} bytes, model: {Model}", request.File.FileName, request.File.Length, request.Model);
+            LogHelper.Info<TranscriptService>("Sending file transcription request for file: {FileName}", request.File.FileName);
 
             var file = request.File;
             string ext = Path.GetExtension(file.FileName).ToLower();
 
             if (!_allowedExtensions.Contains(ext))
             {
-                LogHelper.Warn<TranscriptService>("Invalid file type: {Extension}", ext);
                 return (false, "Invalid file type.");
             }
 
-            string tempFileName = $"temp_{Guid.NewGuid()}{ext}";
-            string tempPath = Path.Combine(Path.GetTempPath(), tempFileName);
-
-            using (var stream = new FileStream(tempPath, FileMode.Create))
-                await file.CopyToAsync(stream);
-
-            LogHelper.Info<TranscriptService>("Saved uploaded file to: {Path}", tempPath);
-
-            string scriptPath = Path.Combine(_env.ContentRootPath, "Scripts", "transcribe.py");
-            string modelArg = CalculationHelper.GetModelArgument(request);
-            string args = $"\"{scriptPath}\" --path \"{tempPath}\" {modelArg}";
-
-            int timeout = CalculationHelper.GetTimeoutMsFromSize(file.Length, request.Model);
-            var (output, error, code) = await ScriptRunner.RunPythonAsync(args, timeout);
-
             try
             {
-                File.Delete(tempPath);
-                LogHelper.Info<TranscriptService>("Deleted temp file: {File}", tempPath);
+                using var content = new MultipartFormDataContent();
+                using var fileStream = file.OpenReadStream();
+                using var streamContent = new StreamContent(fileStream);
+                
+                content.Add(streamContent, "file", file.FileName);
+                content.Add(new StringContent(request.Model.ToString().ToLower()), "model");
+
+                var response = await _httpClient.PostAsync("/transcribe_file", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                    if (result.TryGetProperty("text", out var text))
+                    {
+                        return (true, text.GetString() ?? "");
+                    }
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                LogHelper.Error<TranscriptService>(null, "Python service error: {Error}", error);
+                return (false, $"Service error: {response.StatusCode}");
             }
             catch (Exception ex)
             {
-                LogHelper.Error<TranscriptService>(ex, "Failed to delete temp file: {File}", tempPath);
+                LogHelper.Error<TranscriptService>(ex, "Failed to communicate with Python service.");
+                return (false, "Internal server error communicating with transcription service.");
             }
-
-            return code == 0 ? (true, output) : (false, error);
         }
     }
 }
